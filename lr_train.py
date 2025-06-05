@@ -41,30 +41,36 @@ model = LinearRegressionTorch(1, 1)
 
 #%% Função de perda e otimizador
 loss_func = nn.MSELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.02)
+
+lr = 0.02
+
+optimizer = torch.optim.SGD(model.parameters(), lr=lr)
 
 #%% Treinamento
 EPOCHS = 5000
+batch_size = 8
 losses, slope, bias = [], [], []
 
 for epoch in range(EPOCHS):
-    optimizer.zero_grad()
-    y_pred = model(X)
-    loss = loss_func(y_pred, y_true)
-    loss.backward()
-    optimizer.step()
+    for i in range(0, X.shape[0], batch_size):
+            
+        optimizer.zero_grad()
+        y_pred = model(X[i:i+batch_size])
+        loss = loss_func(y_pred, y_true[i:i+batch_size])
+        loss.backward()
+        optimizer.step()
 
-    # Armazenando parâmetros
-    for name, param in model.named_parameters():
-        if name == 'linear.weight':
-            slope.append(param.item())
-        elif name == 'linear.bias':
-            bias.append(param.item())
+        # Armazenando parâmetros
+        for name, param in model.named_parameters():
+            if name == 'linear.weight':
+                slope.append(param.item())
+            elif name == 'linear.bias':
+                bias.append(param.item())
 
-    losses.append(loss.item())
+        losses.append(loss.item())
 
-    if epoch % 100 == 0:
-        print(f'Epoch: {epoch}, Loss: {loss.item():.4f}')
+        if epoch % 100 == 0:
+            print(f'Epoch: {epoch}, Loss: {loss.item():.4f}')
 
 #%% Visualizações do treinamento
 sns.lineplot(x=range(EPOCHS), y=losses).set(title='Perda durante o treinamento')
