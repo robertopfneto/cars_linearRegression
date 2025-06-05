@@ -7,6 +7,8 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 
+from cars_linearRegression.model import LinearRegressionTorch
+
 #%% Importando dataset
 arquivo_carro = 'car_data.csv'
 carros = pd.read_csv(arquivo_carro)
@@ -27,15 +29,6 @@ y_scaled = scaler_y.fit_transform(y_np)
 
 X = torch.from_numpy(X_scaled)
 y_true = torch.from_numpy(y_scaled)
-
-#%% Classe do Modelo
-class LinearRegressionTorch(nn.Module):
-    def __init__(self, input_size, output_size): 
-        super(LinearRegressionTorch, self).__init__()
-        self.linear = nn.Linear(input_size, output_size)
-
-    def forward(self, x):
-        return self.linear(x)
 
 # Inicializa modelo
 model = LinearRegressionTorch(1, 1)
