@@ -7,7 +7,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 
-from cars_linearRegression.model import LinearRegressionTorch
+
 
 #%% Importando dataset
 arquivo_carro = 'car_data.csv'
@@ -18,27 +18,33 @@ sns.scatterplot(x='Present_Price', y='Selling_Price', data=carros)
 sns.regplot(x='Present_Price', y='Selling_Price', data=carros)
 
 #%% Pré-processamento e normalização
-X_np = carros['Present_Price'].values.astype(np.float32).reshape(-1,1)
-y_np = carros['Selling_Price'].values.astype(np.float32).reshape(-1,1)
+X_list = carros['Present_Price'].values
+X_np = np.array(X_list, dtype=np.float32).reshape(-1, 1)
 
-scaler_X = StandardScaler()
-scaler_y = StandardScaler()
+y_list = carros['Selling_Price'].values
+y_np = np.array(y_list, dtype=np.float32).reshape(-1, 1)
 
-X_scaled = scaler_X.fit_transform(X_np)
-y_scaled = scaler_y.fit_transform(y_np)
+# transforma as matrizes resultantes em tensores do pytorch
+X = torch.from_numpy(X_np)
+y_true = torch.from_numpy(y_np)
+#%% model
+class LinearRegressionTorch(nn.Module):
+    def __init__(self, input_size, output_size): 
+        super(LinearRegressionTorch, self).__init__()
+        self.linear = nn.Linear(input_size, output_size)
 
-X = torch.from_numpy(X_scaled)
-y_true = torch.from_numpy(y_scaled)
+    def forward(self, x):
+        return self.linear(x)
 
 # Inicializa modelo
 model = LinearRegressionTorch(1, 1)
 
 #%% Função de perda e otimizador
 loss_func = nn.MSELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+optimizer = torch.optim.SGD(model.parameters(), lr=0.02)
 
 #%% Treinamento
-EPOCHS = 1000
+EPOCHS = 5000
 losses, slope, bias = [], [], []
 
 for epoch in range(EPOCHS):
@@ -72,13 +78,19 @@ plt.show()
 
 #%% Visualização final da regressão aprendida
 # Reconvertendo para escala original
-X_plot = scaler_X.inverse_transform(X_scaled)
-y_pred_plot = model(X).detach().numpy()
-y_pred_plot = scaler_y.inverse_transform(y_pred_plot)
+# Geração das previsões diretamente no espaço original
+y_pred = model(X).detach().numpy().reshape(-1)
 
+# Plotando os dados reais e a regressão aprendida
+plt.figure(figsize=(10, 6))
 sns.scatterplot(x=X_np.reshape(-1), y=y_np.reshape(-1), label='Dados reais')
-sns.lineplot(x=X_plot.reshape(-1), y=y_pred_plot.reshape(-1), color='red', label='Regressão aprendida')
+sns.lineplot(x=X_np.reshape(-1), y=y_pred, color='red', label='Regressão aprendida')
+plt.xlabel("Present_Price")
+plt.ylabel("Selling_Price")
 plt.title("Regressão Linear com PyTorch")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
 plt.show()
 
 # %%
