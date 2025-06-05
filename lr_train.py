@@ -6,7 +6,7 @@ import seaborn as sns
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
-
+from torch.utils.data import Dataset, DataLoader
 
 
 #%% Importando dataset
@@ -27,6 +27,27 @@ y_np = np.array(y_list, dtype=np.float32).reshape(-1, 1)
 # transforma as matrizes resultantes em tensores do pytorch
 X = torch.from_numpy(X_np)
 y_true = torch.from_numpy(y_np)
+
+# Hyperparametros
+EPOCHS = 200
+batch_size = 2
+losses, slope, bias = [], [], []
+
+#%% Criando Dataset e Dataloader
+class LinearRegressionDataset(Dataset):
+    def __init__(self, X,y):
+        self.X = X
+        self.y = y
+    
+    def __len__(self):
+        return len(self.X)
+    
+    def __getitem__(self,idx):
+        return self.X[idx], self.y[idx]
+
+train_loader = DataLoader(dataset=LinearRegressionDataset(X_np, y_np), batch_size=batch_size)
+
+
 #%% model
 class LinearRegressionTorch(nn.Module):
     def __init__(self, input_size, output_size): 
@@ -42,21 +63,17 @@ model = LinearRegressionTorch(1, 1)
 #%% Função de perda e otimizador
 loss_func = nn.MSELoss()
 
-lr = 0.02
+lr = 0.01
 
-optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 #%% Treinamento
-EPOCHS = 5000
-batch_size = 8
-losses, slope, bias = [], [], []
-
 for epoch in range(EPOCHS):
-    for i in range(0, X.shape[0], batch_size):
-            
+    for i, (X_batch, y_batch) in enumerate(train_loader):
+
         optimizer.zero_grad()
-        y_pred = model(X[i:i+batch_size])
-        loss = loss_func(y_pred, y_true[i:i+batch_size])
+        y_pred = model(X_batch)
+        loss = loss_func(y_pred, y_batch)
         loss.backward()
         optimizer.step()
 
@@ -69,8 +86,17 @@ for epoch in range(EPOCHS):
 
         losses.append(loss.item())
 
-        if epoch % 100 == 0:
-            print(f'Epoch: {epoch}, Loss: {loss.item():.4f}')
+    if epoch % 100 == 0:
+        print(f'Epoch: {epoch}, Loss: {loss.item():.4f}')
+
+
+#%% Salvando os pesos
+model.state_dict()
+torch.save(model.state_dict(),'model.pth')
+
+#%% carregar os pesos
+model = LinearRegressionTorch(input_size=1,output_size=1)
+model.load_state_dict(torch.load('model.pth'))
 
 #%% Visualizações do treinamento
 sns.lineplot(x=range(EPOCHS), y=losses).set(title='Perda durante o treinamento')
