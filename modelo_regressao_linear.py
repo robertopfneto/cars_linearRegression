@@ -68,7 +68,7 @@ for epoch in range(EPOCHS):
         if param.requires_grad:
             if name == 'linear.weight':
                 slope.append(param.data.numpy()[0][0])
-            if name == 'lienar.bias':
+            if name == 'linear.bias':
                 bias.append(param.data.numpy()[0])
             
     losses.append(float(loss.data))
@@ -85,3 +85,6 @@ sns.scatterplot(x=range(EPOCHS), y=bias) #exibe grafico de perda
 sns.scatterplot(x=range(EPOCHS), y=slope) #exibe grafico de perda
 
 # chegando resultados
+y_pred = model(X).data.numpy().reshape(-1)
+sns.scatterplot(x=X_list, y=y_list)
+sns.lineplot(x=X_list,y=y_list, color='red')
