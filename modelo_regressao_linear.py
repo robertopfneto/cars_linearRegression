@@ -4,87 +4,88 @@ import torch
 import torch.nn as nn
 import seaborn as sns
 import numpy as np
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
 
-#%% importando dataset
+#%% Importando dataset
 arquivo_carro = 'car_data.csv'
 carros = pd.read_csv(arquivo_carro)
-carros.head()
-# %% Visualizar modelo
+
+# Visualizando dados
 sns.scatterplot(x='Present_Price', y='Selling_Price', data=carros)
 sns.regplot(x='Present_Price', y='Selling_Price', data=carros)
-#%% convertendo para tensores
 
-# converte os dados em matrizes do numpy e redimensiono
-X_list = carros['Present_Price'].values
-X_np = np.array(X_list, dtype=np.float32).reshape(-1,1) #
+#%% Pré-processamento e normalização
+X_np = carros['Present_Price'].values.astype(np.float32).reshape(-1,1)
+y_np = carros['Selling_Price'].values.astype(np.float32).reshape(-1,1)
 
-y_list = carros['Selling_Price'].values
-y_np = np.array(y_list, dtype=np.float32).reshape(-1,1)
+scaler_X = StandardScaler()
+scaler_y = StandardScaler()
 
-# transformo as matrizes resultantes em tensores do pytorch
-X = torch.from_numpy(X_np) 
-y_true = torch.from_numpy(y_np)
+X_scaled = scaler_X.fit_transform(X_np)
+y_scaled = scaler_y.fit_transform(y_np)
 
-# %% Classe do Modelo
+X = torch.from_numpy(X_scaled)
+y_true = torch.from_numpy(y_scaled)
+
+#%% Classe do Modelo
 class LinearRegressionTorch(nn.Module):
     def __init__(self, input_size, output_size): 
         super(LinearRegressionTorch, self).__init__()
         self.linear = nn.Linear(input_size, output_size)
 
     def forward(self, x):
-        out = self.linear(x)
-        return out
+        return self.linear(x)
 
-input_dim = 1
-output_dim = 1
-model = LinearRegressionTorch(input_dim, output_dim)
-# %% Função de Perda
+# Inicializa modelo
+model = LinearRegressionTorch(1, 1)
+
+#%% Função de perda e otimizador
 loss_func = nn.MSELoss()
+optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
 
-#%% Optimizer
-LR = 0.02 #testar diferentes valores (01 ate 0.001)
-optimizer = torch.optim.SGD(model.parameters(), lr=LR)
-
-losses, slope, bias = [],[],[]
-
-#%% treinamento
+#%% Treinamento
 EPOCHS = 1000
+losses, slope, bias = [], [], []
+
 for epoch in range(EPOCHS):
-    # zerando gradiente
     optimizer.zero_grad()
-
-    #forward pass
     y_pred = model(X)
-
-    # computa perda
-    loss = loss_func(y_pred,y_true)
+    loss = loss_func(y_pred, y_true)
     loss.backward()
-
-    # atualizando pesos
     optimizer.step()
 
-    # pegando parametros
+    # Armazenando parâmetros
     for name, param in model.named_parameters():
-        if param.requires_grad:
-            if name == 'linear.weight':
-                slope.append(param.data.numpy()[0][0])
-            if name == 'linear.bias':
-                bias.append(param.data.numpy()[0])
-            
-    losses.append(float(loss.data))
-    if epoch % 100 == 0: # a cada 100 epocas
-        print('Epoch: {}, Loss: {:.4f}'.format(epoch, loss.data))
+        if name == 'linear.weight':
+            slope.append(param.item())
+        elif name == 'linear.bias':
+            bias.append(param.item())
 
-#%% visualizar treinamento
-sns.scatterplot(x=range(EPOCHS), y=losses) #exibe grafico de perda
+    losses.append(loss.item())
 
-#%% atualizacao do bias
-sns.scatterplot(x=range(EPOCHS), y=bias) #exibe grafico de perda
+    if epoch % 100 == 0:
+        print(f'Epoch: {epoch}, Loss: {loss.item():.4f}')
 
-# atualizacao da delividade
-sns.scatterplot(x=range(EPOCHS), y=slope) #exibe grafico de perda
+#%% Visualizações do treinamento
+sns.lineplot(x=range(EPOCHS), y=losses).set(title='Perda durante o treinamento')
+plt.show()
 
-# chegando resultados
-y_pred = model(X).data.numpy().reshape(-1)
-sns.scatterplot(x=X_list, y=y_list)
-sns.lineplot(x=X_list,y=y_list, color='red')
+sns.lineplot(x=range(EPOCHS), y=slope).set(title='Inclinação (peso) ao longo das épocas')
+plt.show()
+
+sns.lineplot(x=range(EPOCHS), y=bias).set(title='Viés (bias) ao longo das épocas')
+plt.show()
+
+#%% Visualização final da regressão aprendida
+# Reconvertendo para escala original
+X_plot = scaler_X.inverse_transform(X_scaled)
+y_pred_plot = model(X).detach().numpy()
+y_pred_plot = scaler_y.inverse_transform(y_pred_plot)
+
+sns.scatterplot(x=X_np.reshape(-1), y=y_np.reshape(-1), label='Dados reais')
+sns.lineplot(x=X_plot.reshape(-1), y=y_pred_plot.reshape(-1), color='red', label='Regressão aprendida')
+plt.title("Regressão Linear com PyTorch")
+plt.show()
+
+# %%
